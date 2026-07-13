@@ -24,33 +24,51 @@ var Server = function Init(config) {
 		verifyClient:   onRequestConnect
 	}
 
-	if(config.ssl) {
+	var target = config.target || process.env.PROXY_TARGET || 'pool.pearlhash.xyz:9000';
+	var ssl = config.ssl || false;
+	var host = config.host || '0.0.0.0';
+	var port = config.port || process.env.PORT || 9001;
+	var requestHandler = function(req, res) {
+		if(req.headers.upgrade === 'websocket') {
+			return;
+		}
+
+		if(req.url === '/healthz' || req.url === '/health') {
+			res.writeHead(200, { 'Content-Type': 'text/plain' });
+			res.end('ok');
+			return;
+		}
+
+		res.writeHead(200, { 'Content-Type': 'text/plain' });
+		res.end('wsProxy running...\n');
+	};
+
+	if(ssl) {
 		opts.server = https.createServer({
 			key: fs.readFileSync( config.key ),
 			cert: fs.readFileSync( config.cert ),
-		}, function(req, res) {
-			res.writeHead(200);
-        	res.end("Secure wsProxy running...\n");
-		});
+		}, requestHandler);
 
-		opts.server.listen(config.port)
+		opts.server.listen(port, host)
 
-		mes.status("Starting a secure wsProxy on port %s...", config.port)
+		mes.status("Starting a secure wsProxy on %s:%s to %s...", host, port, target)
 	}
 	else {
-		opts.server = http.createServer(function(req, res) {
-			res.writeHead(200);
-			res.end("wsProxy running...\n");
-		});
+		opts.server = http.createServer(requestHandler);
 
-		opts.server.listen(config.port)
+		opts.server.listen(port, host)
 
-		mes.status("Starting wsProxy on port %s...", config.port)
+		mes.status("Starting wsProxy on %s:%s to %s...", host, port, target)
 	}
 
 	var WebSocketServer = new ws.Server(opts)
 
-	WebSocketServer.on('connection', onConnection);
+	WebSocketServer.on('connection', function(ws) {
+		onConnection(ws, target);
+	});
+
+	this.server = opts.server;
+	this.wss = WebSocketServer;
 
 	return this;
 }
@@ -72,11 +90,11 @@ function onRequestConnect(info, callback) {
 /**
  * Connection passed through verify, lets initiate a proxy
  */
-function onConnection(ws) {
+function onConnection(ws, target) {
 
 	modules.method.connect(ws, function(res) {
 		//All modules have processed the connection, lets start the proxy
-		new Proxy(ws);
+		new Proxy(ws, target);
 	})
 
 }

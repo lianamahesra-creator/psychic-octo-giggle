@@ -7,11 +7,11 @@ var mes        = require('./message');
 /**
  * Constructor
  */
-var Proxy = function Constructor(ws) {
-	const to = ws.upgradeReq.url.substr(1);
+var Proxy = function Constructor(ws, target) {
+	var to = target || ws.upgradeReq.url.substr(1);
 	this._tcp;
 	this._from = ws.upgradeReq.connection.remoteAddress;
-	this._to   = Buffer.from(to, 'base64').toString();
+	this._to   = to;
 	this._ws   = ws;
 
 	// Bind data
@@ -23,10 +23,16 @@ var Proxy = function Constructor(ws) {
 
 	// Initialize proxy
 	var args = this._to.split(':');
+	var host = args[0];
+	var port = parseInt(args[1], 10);
+
+	if(!host || !port) {
+		throw new Error('Invalid target: ' + this._to);
+	}
 
 	// Connect to server
 	mes.info("Requested connection from '%s' to '%s' [ACCEPTED].", this._from, this._to);
-	this._tcp = net.connect( args[1], args[0] );
+	this._tcp = net.connect(port, host);
 
 	// Disable nagle algorithm
 	this._tcp.setTimeout(0)
@@ -64,7 +70,7 @@ Proxy.prototype.clientData = function OnServerData(data) {
  * Server -> Client
  */
 Proxy.prototype.serverData = function OnClientData(data) {
-	this._ws.send(data.toString(), function(error){
+	this._ws.send(data, { binary: Buffer.isBuffer(data) }, function(error){
 		/*
 		if (error !== null) {
 			OnClose();

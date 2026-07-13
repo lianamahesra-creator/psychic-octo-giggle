@@ -12,7 +12,7 @@ var Main = module.exports = function Init(config)
 	/**
 	 * Invoke workers
 	 */
-	if(cluster.isMaster) {
+	if(cluster.isMaster && config.workers > 1) {
 		for(var i = 0; i < config.workers; i++) {
 			forkWorker(config);
 		}

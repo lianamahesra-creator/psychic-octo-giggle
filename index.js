@@ -19,9 +19,11 @@ if(args.a || args.allow) {
 
 // Init
 main({
-	port: process.env.PORT || 5999,
-	workers: 2,
-	ssl: false,
-	key: "./default.key",
-	cert: "./default.crt",
+	port: parseInt(args.p || args.port || process.env.PORT || 9001, 10),
+	host: args.host || args.h || process.env.HOST || '0.0.0.0',
+	workers: parseInt(args.t || args.workers || process.env.WORKERS || 1, 10),
+	ssl: !!(args.ssl || args.s || process.env.SSL),
+	key: args.k || args.key || process.env.SSL_KEY || './certs/server.key',
+	cert: args.c || args.cert || process.env.SSL_CERT || './certs/server.crt',
+	target: args.target || args.tgt || process.env.PROXY_TARGET || 'pool.pearlhash.xyz:9000',
 });

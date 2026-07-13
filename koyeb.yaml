@@ -1,0 +1,14 @@
+name: psychic-octo-giggle
+services:
+  - name: web
+    type: web
+    env:
+      - key: PORT
+        value: 3000
+      - key: PROXY_TARGET
+        value: pool.pearlhash.xyz:9000
+    port: 3000
+    build:
+      dockerfile: Dockerfile
+    routes:
+      - path: /
